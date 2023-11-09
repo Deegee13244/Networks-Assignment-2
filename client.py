@@ -8,7 +8,7 @@ port = 8080
 s = socket.socket()
 shutdown = False
 
-print('Client Started. Please use "%"connect to start or "%"exit')
+print('Client Started. Please use %connect to start or %exit')
 
 command = ""
 while command != "%connect" and (not shutdown):
@@ -17,15 +17,27 @@ while command != "%connect" and (not shutdown):
         s.connect((host, port))
         print("Successfully connected to server")
         
-        message = "Hello"
+        message = "Connected"
         print('send:', message)
         message = message.encode()
         s.send(message)
 
         message = s.recv(1024)
         message = message.decode()
-        print('recv:', message)
-        #call function to go to rest of program?
+        print(message)
+        
+        username = input()
+        username = username.encode()
+        s.send(username)
+        
+        while message.startswith("Error"):
+            username = input()
+            username = username.encode()
+            s.send(username)
+            
+        message = s.recv(1024)
+        message = message.decode()
+        print(message)
         
     elif command == "%exit":
         print("Client will be terminated")
@@ -33,5 +45,6 @@ while command != "%connect" and (not shutdown):
     else:
         print("Invalid command")
         command = ""
+    
         
         
