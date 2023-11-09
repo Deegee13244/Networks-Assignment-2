@@ -13,7 +13,7 @@ def handle_client(conn, addr):
     print("[thread] client:", addr, 'recv:', message)
     
     # simulate longer work
-    time.sleep(5)
+    # time.sleep(5)
 
     # send answer
     message = "Bye!"
