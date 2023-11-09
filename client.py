@@ -1,5 +1,6 @@
 import socket
 
+# --- main ---
 
 host = '127.0.0.1'
 port = 8080
@@ -16,7 +17,7 @@ while command != "%connect" and (not shutdown):
         s.connect((host, port))
         print("Successfully connected to server")
         
-        message = "Hello"
+        message = "Connected"
         print('send:', message)
         message = message.encode()
         s.send(message)
@@ -44,6 +45,5 @@ while command != "%connect" and (not shutdown):
     else:
         print("Invalid command")
         command = ""
-    
         
         
