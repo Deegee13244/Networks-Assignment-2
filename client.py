@@ -1,11 +1,11 @@
 import socket
 
-def main():
-    #host = '127.0.0.1'
-    #port = 8080
 
-    s = socket.socket()
-    shutdown = False
+host = '127.0.0.1'
+port = 8080
+
+s = socket.socket()
+shutdown = False
 
 print('Client Started. Please use %connect to start or %exit')
 
