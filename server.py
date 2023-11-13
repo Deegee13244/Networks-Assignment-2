@@ -2,8 +2,15 @@ import socket
 import threading
 
 # Global Variables
+activeConnections = []
+activeAddresses = []
 usernames = ["UsernameError"] #possible race condition if clients enter usernames in different order than connected?
 threads = [0]
+group1Users = []
+group2Users = []
+group3Users = []
+group4Users = []
+group5Users = []
 
 # --- functions ---
 
@@ -20,8 +27,30 @@ def receive_message(connectionInfo):
     print(connectionInfo[2], "client:", connectionInfo[1], 'recv:', clientMessage)
     return clientMessage
 
+#send a given message to all active clients
+#this successfully sends a message, but how do we get clients to always be listening for a NOTICE message? 
+def send_to_all(message):
+    for conn in activeConnections:
+        i = 0
+        connectionInfo = [conn, activeAddresses[i], threads[i + 1]]
+        send_message(connectionInfo, message)
+        
+#to be called when a client disconnects. Scrubs them from all arrays that keep track of them
+def cleanup(connectionInfo, username):
+    print(threads[connectionInfo[2]], "ending")
+    groups = [group1Users, group2Users, group3Users, group4Users, group5Users]
+    for group in groups:
+        if username in group:
+            group.remove(username)
+    activeConnections.remove(connectionInfo[0])
+    activeAddresses.remove(connectionInfo[1])
+    threads.remove(connectionInfo[2])
+    usernames.remove(username)
+
 #runs each time a client connects
 def handle_client(conn, addr):
+    activeConnections.append(conn)
+    activeAddresses.append(addr)
     threads.append(threads[-1] + 1)
     threadNumber = threads[-1]
     print(threads[threadNumber], "starting")
@@ -42,11 +71,34 @@ def handle_client(conn, addr):
             
         #add new user's username to usernames array
         usernames.append(clientMessage)
+        currentUsername = clientMessage
         send_message(connectionInfo, "Welcome to the server.")
+        
+        clientConnected = True
+        while clientConnected:
+            clientMessage = receive_message(connectionInfo)
+            
+            clientMessageList = clientMessage.split(" ")
+            
+            if clientMessageList[0] == "EXIT":
+                print(currentUsername, "has left the server")
+                cleanup(connectionInfo, currentUsername)
+                send_to_all("NOTICE:" + currentUsername + " has disconnected from the server")
+                clientConnected = False
+                break
+            elif clientMessageList[0] == "JOIN":
+                print(currentUsername, "wants to join Group 1")
+                if currentUsername not in group1Users:
+                    group1Users.append(currentUsername)
+                    print(currentUsername, "has joined group 1")
+                    send_message(connectionInfo, "GROUP_JOINED")
+                else:
+                    print(currentUsername, "tried to join group 1, but is already in it")
+                    send_message(connectionInfo, "GROUP_JOIN_ERROR")
+            elif clientMessageList[0] == "USERS":
+                print(currentUsername, "wants a list of users")
                 
     conn.close()
-
-    print(threads[threadNumber], "ending")
    
 # --- main ---
 
