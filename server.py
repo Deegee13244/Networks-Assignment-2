@@ -10,27 +10,28 @@ activeConnections = []
 activeAddresses = []
 usernames = ["UsernameError"] #possible race condition if clients enter usernames in different order than connected?
 threads = [0]
-group1Users = []
-group2Users = []
-group3Users = []
-group4Users = []
-group5Users = []
-groups = [group1Users, group2Users, group3Users, group4Users, group5Users]
-messages = []
+groups = ["Main", "Group_1", "Group_2", "Group_3", "Group_4"]
+data = {}
 
 # --- functions ---
 
 #send a message to client. Client is determind by information passed into connectionInfo array
 def send_message(connectionInfo, serverMessage):
-    serverMessage = serverMessage.encode()
-    connectionInfo[0].send(serverMessage)
+    if not isinstance(serverMessage, list):
+        serverMessage = [serverMessage]
+
+    serverMessageStr = ''
+    for item in serverMessage:
+        print("Sending", item)
+        if isinstance(item, list):
+            for subitem in item:
+                serverMessageStr += ' ' + subitem
+        else:
+            serverMessageStr += ' ' + item
+
+    serverMessageStr = serverMessageStr[1:].encode()
+    connectionInfo[0].send(serverMessageStr)
     print(connectionInfo[2], "client:", connectionInfo[1], 'send:', serverMessage)
-    
-def send_array_message(connectionInfo, arrayToSend):
-    for item in arrayToSend:
-        serverMessage = item.encode()
-        connectionInfo[0].send(serverMessage)
-        print(connectionInfo[2], "client:", connectionInfo[1], 'send:', serverMessage)
     
 #receive a message from a connected client. Client to listen to is determind by information passed into connnectionInfo array
 def receive_message(connectionInfo):
@@ -44,6 +45,7 @@ def receive_message(connectionInfo):
 #for now, while only using 1 group, it's cool i guess
 def send_to_all(message):
     for conn in activeConnections:
+
         i = 0
         connectionInfo = [conn, activeAddresses[i], threads[i + 1]]
         send_message(connectionInfo, message)
@@ -59,8 +61,8 @@ def cleanup(connectionInfo, username):
     threads.remove(connectionInfo[2])
     usernames.remove(username)
     
-def create_message(username, subject, content):
-    messageId = random.randint(1000, 9999)
+def create_message(username, groupKey, subject, content):
+    messageId = str(random.randint(1000, 9999))
     postDate = datetime.now().isoformat()
     message = {
         "ID": messageId,
@@ -70,9 +72,8 @@ def create_message(username, subject, content):
         "Content": content
     }
     #store entire message, including content to be retrieved later
-    messages.append(message)
-    #pop the content field off of the json object before it is sent to post
-    message.popitem()
+    data[groupKey]["Messages"].update({messageId: message})
+
     return json.dumps(message)
 
 #runs each time a client connects
@@ -115,58 +116,75 @@ def handle_client(conn, addr):
                 send_to_all("EXIT_NOTICE: " + currentUsername + " has disconnected from the server")
                 clientConnected = False
                 break
-            
-            #handle %join command
-            elif clientMessageList[0] == "JOIN":
-                print(currentUsername, "wants to join Group 1")
-                if currentUsername not in group1Users:
-                    group1Users.append(currentUsername)
-                    print(currentUsername, "has joined group 1")
-                    send_message(connectionInfo, "GROUP_JOINED")
-                else:
-                    print(currentUsername, "tried to join group 1, but is already in it")
+
+            elif clientMessageList[0] == "GROUPS":
+                print(currentUsername, "wants a list of groups")
+                print("Sending groups")
+                send_message(connectionInfo, ["SENDING_GROUPS", list(data.keys())])
+
+            elif clientMessageList[0] == "GROUPJOIN":
+                if not clientMessageList[1]:
+                    print(currentUsername, "%groupjoin command requires group id/name")
                     send_message(connectionInfo, "GROUP_JOIN_ERROR")
-                    
-            #currently bugged
-            elif clientMessageList[0] == "USERS":
-                print(currentUsername, "wants a list of users in their group")
-                if currentUsername in group1Users:
-                    print("Sending users in Group 1")
-                    send_message(connectionInfo, "SENDING_USERS " + str(len(group1Users)))
-                    send_array_message(connectionInfo, group1Users)
+
+                print(currentUsername, f"wants to join Group {clientMessageList[1]}")
+
+                key = (clientMessageList[1] if not clientMessageList[1].isdigit() else list(data.keys())[int(clientMessageList[1])])
+
+                if currentUsername not in data[key]["Users"]:
+                    data[key]["Users"].append(currentUsername)
+                    print(currentUsername, f"has joined group {clientMessageList[1]}")
+                    send_message(connectionInfo, ["GROUP_JOINED", key])
                 else:
-                    print(currentUsername, "tried to get group 1 users, but is not in the group")
-                    send_message(connectionInfo, "USERS_ERROR")
-                    
-            #handle %post command
-            elif clientMessageList[0] == "POST":
-                subject = clientMessageList[1]
-                content = clientMessageList[2]
-                print(currentUsername, "wants to post in Group 1")
-                if currentUsername in group1Users:
-                    message = create_message(currentUsername, subject, content)
+                    print(currentUsername, f"tried to join group {clientMessageList[1]}, but is already in it")
+                    send_message(connectionInfo, "GROUP_JOIN_ERROR")
+            
+            elif clientMessageList[0] == "GROUPPOST":
+                key = (clientMessageList[1] if not clientMessageList[1].isdigit() else list(data.keys())[int(clientMessageList[1])])
+                subject = clientMessageList[2]
+                content = clientMessageList[3]
+                print(currentUsername, f"wants to post in Group {key}")
+                if currentUsername in data[key]["Users"]:
+                    message = create_message(currentUsername, key, subject, content)
                     print("Posting message...")
                     send_to_all("NEW_POST" + message)
                 else:
-                    print(currentUsername, "tried to post a message to group 1, but isn't in it")
+                    print(currentUsername, f"tried to post a message to group {key}, but isn't in it")
                     send_message(connectionInfo, "POST_ERROR")
-                    
-            elif clientMessageList[0] == "LEAVE":
-                count = 0
-                for group in groups:
-                    if currentUsername in group:
-                        group.remove(currentUsername)
-                        print(currentUsername, "has left the group")
-                        send_to_all("LEAVE_NOTICE: " + currentUsername + " has left the group")
-                    else:
-                        count += 1
-                #looked in all the groups, didn't find the user
-                if count == 5:
+
+
+            elif clientMessageList[0] == "GROUPUSERS":
+                print(currentUsername, "wants a list of users in their group")
+
+                key = (clientMessageList[1] if not clientMessageList[1].isdigit() else list(data.keys())[int(clientMessageList[1])])
+
+                if currentUsername in data[key]["Users"]:
+                    print(f"Sending users in Group {key}")
+                    send_message(connectionInfo, ["SENDING_USERS", key, data[key]["Users"]])
+                else:
+                    print(currentUsername, f"tried to get group {key} users, but is not in the group")
+                    send_message(connectionInfo, "USERS_ERROR")
+            
+
+            elif clientMessageList[0] == "GROUPLEAVE":
+                key = (clientMessageList[1] if not clientMessageList[1].isdigit() else list(data.keys())[int(clientMessageList[1])])
+                
+                if currentUsername in data[key]["Users"]:
+                    data[key]["Users"].remove(currentUsername)
+                    print(currentUsername, "has left the group")
+                    send_to_all("LEAVE_NOTICE: " + currentUsername + " has left the group")
+                else:
                     send_message(connectionInfo, "LEAVE_ERROR")
-                    
-                        
-                
-                
+
+            
+            elif clientMessageList[0] == "GROUPMESSAGE":
+                key = (clientMessageList[1] if not clientMessageList[1].isdigit() else list(data.keys())[int(clientMessageList[1])])
+                messageID = clientMessageList[2]
+
+                if currentUsername in data[key]["Users"]:
+                    send_message(connectionInfo, json.dumps(data[key]["Messages"][messageID]))
+                else:
+                    send_message(connectionInfo, "MESSAGE_ERROR")
                 
     conn.close()
    
@@ -175,6 +193,13 @@ def handle_client(conn, addr):
 def main():
     host = '127.0.0.1'
     port = 8080
+
+    for group in groups:
+        data.update({group: {
+            "Users": [],
+            "Messages": {}
+        }})
+
 
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
