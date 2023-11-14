@@ -83,7 +83,7 @@ def handle_client(conn, addr):
             if clientMessageList[0] == "EXIT":
                 print(currentUsername, "has left the server")
                 cleanup(connectionInfo, currentUsername)
-                send_to_all("NOTICE:" + currentUsername + " has disconnected from the server")
+                send_to_all("NOTICE: " + currentUsername + " has disconnected from the server")
                 clientConnected = False
                 break
             elif clientMessageList[0] == "JOIN":

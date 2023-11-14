@@ -1,10 +1,34 @@
 import socket
+import threading
+import time
 
-# -- globab variables --
+# -- global variables --
 s = socket.socket()
 shutdown = False
+serverMessage = ""
+
+
+# -- classes --
+class ReaderThread(threading.Thread):
+    def __init__(self, socket):
+        super().__init__()
+        self.socket = socket
+        
+    def run(self):
+        global serverMessage
+        try:
+            while True:
+                #Wait for a message
+                serverMessage = self.socket.recv(1024).decode()
+                if serverMessage.startswith("NOTICE"):
+                    print('\n' + serverMessage)
+        except Exception as e:
+            print(f"Exception: {e}")
 
 # -- functions ---
+def wait_for_server():
+    time.sleep(0.5)
+    
 def send_message(clientMessage):
     clientMessage = clientMessage.encode()
     s.send(clientMessage)
@@ -18,17 +42,21 @@ def help():
     print('Available Commands:')
     print('"%join" --> joins the default group message board (Group 1)')
     print('"%post subject content" --> posts a message to the board')
-    print('"%users" --> retrievs a list of all users in the group')
+    print('"%users" --> retrieves a list of all users in the group')
     print('"%message messageID" --> retrieves contents of specified message')
     print('"%leave" --> leaves the current group')
     print('"%exit" --> disconnect from the server and shutdown the client')
 
 def runClient(username):
     global shutdown
+    global serverMessage
     help()
-    serverMessage = ""
+    
+    reader_thread = ReaderThread(s)
+    reader_thread.start()
     
     while not shutdown:
+        
         command = input("Enter a commmand: ")
         
         commandList = command.split(" ")
@@ -36,6 +64,7 @@ def runClient(username):
         #exit command
         if commandList[0] == "%exit":
             print("Disconnecting from server...")
+            print("Goodbye!")
             send_message("EXIT " + username)
             shutdown = True
             break
@@ -44,14 +73,13 @@ def runClient(username):
         elif commandList[0] == "%join":
             print("Requesting to join group 1...")
             send_message("JOIN " + username)
-            serverMessage = receive_message()
+            wait_for_server()
             if serverMessage == "GROUP_JOINED":
                 print("Successfully joined Group 1")
             elif serverMessage == "GROUP_JOIN_ERROR":
                 print("Error: You may already be in this group")
             else:
                 print("Error: Unexpected response from server")
-            serverMessage = ""
                 
         else:
             print("Command not recognized. Please enter valid command")
@@ -61,7 +89,7 @@ def main():
     global shutdown
     host = '127.0.0.1'
     port = 8080
-
+    
     print('Client Started. Please use %connect to start or %exit')
 
     command = ""
