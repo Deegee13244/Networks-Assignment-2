@@ -128,7 +128,6 @@ def handle_client(conn, addr):
                     print(currentUsername, "tried to join group 1, but is already in it")
                     send_message(connectionInfo, "GROUP_JOIN_ERROR")
                     
-            #currently bugged
             elif clientMessageList[0] == "USERS":
                 print(currentUsername, "wants a list of users in their group")
                 if currentUsername in group1Users:
