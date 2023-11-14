@@ -26,11 +26,12 @@ def send_message(connectionInfo, serverMessage):
     connectionInfo[0].send(serverMessage)
     print(connectionInfo[2], "client:", connectionInfo[1], 'send:', serverMessage)
     
-def send_array_message(connectionInfo, arrayToSend):
-    for item in arrayToSend:
-        serverMessage = item.encode()
-        connectionInfo[0].send(serverMessage)
-        print(connectionInfo[2], "client:", connectionInfo[1], 'send:', serverMessage)
+#don't think we wanna use this guy
+# def send_array_message(connectionInfo, arrayToSend):
+#     for item in arrayToSend:
+#         serverMessage = item.encode()
+#         connectionInfo[0].send(serverMessage)
+#         print(connectionInfo[2], "client:", connectionInfo[1], 'send:', serverMessage)
     
 #receive a message from a connected client. Client to listen to is determind by information passed into connnectionInfo array
 def receive_message(connectionInfo):
@@ -132,8 +133,10 @@ def handle_client(conn, addr):
                 print(currentUsername, "wants a list of users in their group")
                 if currentUsername in group1Users:
                     print("Sending users in Group 1")
-                    send_message(connectionInfo, "SENDING_USERS " + str(len(group1Users)))
-                    send_array_message(connectionInfo, group1Users)
+                    message = "SENDING_USERS"
+                    for user in group1Users:
+                        message = message + "\n" + user
+                    send_message(connectionInfo, message)
                 else:
                     print(currentUsername, "tried to get group 1 users, but is not in the group")
                     send_message(connectionInfo, "USERS_ERROR")

@@ -92,15 +92,11 @@ def runClient(username):
         elif commandList[0] == "%users":
             print("Getting list of users in Group 1...")
             send_message("USERS " + username)
-            serverMessageList = serverMessage.split(" ")
-            if serverMessageList[0] == "USERS_ERROR":
+            wait_for_server()
+            if serverMessage.startswith("USERS_ERROR"):
                 print("Error: Please join Group 1 to view its users")
-            elif serverMessageList[0] == "SENDING_USERS":
-                numUsers = serverMessageList[1]
-                print("Users in Group 1:")
-                for i in range(int(numUsers)):
-                    print('\n' + serverMessage)
-                    i += 1
+            elif serverMessage.startswith("SENDING_USERS"):
+                print(serverMessage)
             else:
                 print("Error: Unexpected response from server")  
                 
