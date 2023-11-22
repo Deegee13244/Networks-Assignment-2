@@ -55,22 +55,20 @@ def receive_message():
 
 def help():
     print("Available Commands:")
-    # print('"%join" --> joins the default group message board (Group 1)')
-    # print('"%post subject content" --> posts a message to the default board (Group 1)')
-    # print('"%users" --> retrieves a list of all users in default group (Group 1)')
-    # print('"%message messageID" --> retrieves contents of specified message')
-    # print('"%leave" --> leaves the current group')
-    # print('"%exit" --> disconnect from the server and shutdown the client')
-
-    """%groups command to retrieve a list of all groups that can be joined.
-– a %groupjoin command followed by the group id/name to join a specific group.
-– a %grouppost command followed by the group id/name, the message subject, and the message content or
-main body to post a message to a message board owned by a specific group.
-– a %groupusers command followed by the group id/name to retrieve a list of users in the given group.
-– a %groupleave command followed by the group id/name to leave a specific group.
-– a %groupmessage command followed by the group id/name and message ID to retrieve the content of the
-message posted earlier on a message board owned by a specific group"""
-
+    print("Part 1 Commands")
+    print('"%join" --> joins the default group message board')
+    print('"%post subject content" --> posts a message to the default board')
+    print('"%users" --> retrieves a list of all users in default group')
+    print('"%message messageID" --> retrieves contents of specified message')
+    print('"%leave" --> leaves the current group')
+    print('"%exit" --> disconnect from the server and shutdown the client')
+    print("Part 2 Commands")
+    print('"%groups" --> retrieve a list of all groups that can be joined')
+    print('"%groupjoin groupID" --> join the specified group')
+    print('"%grouppost groupID subject content" --> posts a message to the specified group')
+    print('"%groupusers groupID" --> retrieves a list of users in the specified group')
+    print('"%groupleave groupID" --> leave a specific group.')
+    print('"%groupmessage groupID messageID" --> retrieves the content of the message posted earlier on a message board in the specified group')
 
 def runClient(username):
     global shutdown
@@ -119,7 +117,15 @@ def runClient(username):
                 serverMessageList = serverMessage.split(" ")
 
                 if serverMessageList[0] == "GROUP_JOINED":
-                    print(f"Successfully joined {serverMessageList[1]}")
+                    print(f"Successfully joined {serverMessageList[1]} ")
+                    #time to show list of users in that group
+                    print("Getting list of users...")
+                    send_message("GROUPUSERS " + group)
+                    wait_for_server()
+                    serverMessageList = serverMessage.split(" ")
+                    print(f"{serverMessageList[1]} users:")
+                    for userName in serverMessageList[2:]:
+                        print(userName)
                 elif serverMessageList[0] == "GROUP_JOIN_ERROR":
                     print("Error: You may already be in this group")
                 else:
@@ -202,18 +208,24 @@ def runClient(username):
 # --- main ---
 def main():
     global shutdown
-    host = "127.0.0.1"
-    port = 8080
 
-    print("Client Started. Please use %connect to start or %exit")
+    print('Client Started. Please use "%connect host# port#" to start or %exit')
+    print('If running on local machine, use 127.0.0.1 and 8080 as host and port numbers')
 
     command = ""
     while command != "%connect" and (not shutdown):
         try:
             command = input("Enter a command: ")
-            if command == "%connect":
+            commandList = command.split(" ")
+            if len(commandList) != 3 and commandList[0] == "%connect":
+                print("Error: Please provide required arguments to the connect command")
+                command = ""
+            elif commandList[0] == "%connect" and len(commandList) == 3:
+                command = commandList[0]
+                host = commandList[1]
+                port = commandList[2]
                 try:
-                    s.connect((host, port))
+                    s.connect((host, int(port)))
                 except:
                     print("Server is not currently available")
                     command = ""

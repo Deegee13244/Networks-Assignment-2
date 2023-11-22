@@ -42,7 +42,6 @@ def receive_message(connectionInfo):
 
 #send a given message to all active clients 
 #actually, this should be rewritten to only send messages to active clients WITHIN THE SAME group as current operation
-#for now, while only using 1 group, it's cool i guess
 def send_to_all(message):
     for conn in activeConnections:
 
@@ -73,6 +72,9 @@ def create_message(username, groupKey, subject, content):
     }
     #store entire message, including content to be retrieved later
     data[groupKey]["Messages"].update({messageId: message})
+    
+    #gets rid of the content field before message notification is sent
+    #message.pop("Content")
 
     return json.dumps(message)
 
@@ -146,6 +148,9 @@ def handle_client(conn, addr):
                 print(currentUsername, f"wants to post in Group {key}")
                 if currentUsername in data[key]["Users"]:
                     message = create_message(currentUsername, key, subject, content)
+                    #remove the content field from the message when it's sent as a notification
+                    contentIndex = message.find("Content")
+                    message = message[:contentIndex]
                     print("Posting message...")
                     send_to_all("NEW_POST" + message)
                 else:
