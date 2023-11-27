@@ -118,7 +118,8 @@ def runClient(username):
 
                 if serverMessageList[0] == "GROUP_JOINED":
                     print(f"Successfully joined {serverMessageList[1]} ")
-                    #time to show list of users in that group
+
+                    # Time to show list of users in that group
                     print("Getting list of users...")
                     send_message("GROUPUSERS " + group)
                     wait_for_server()
@@ -126,6 +127,16 @@ def runClient(username):
                     print(f"{serverMessageList[1]} users:")
                     for userName in serverMessageList[2:]:
                         print(userName)
+
+                    # Time to show list of recent messages in that group
+                    print("Getting recent messages...")
+                    send_message("GROUPMESSAGE " + group + " ALL")
+                    wait_for_server()
+                    serverMessageList = serverMessage.split(" ")
+                    print(f"{serverMessageList[1]} recent messages:")
+                    for message in serverMessageList[-min(len(serverMessageList) - 2, 2):]:
+                        print(message.replace('%20', ' '))
+
                 elif serverMessageList[0] == "GROUP_JOIN_ERROR":
                     print("Error: You may already be in this group")
                 else:
